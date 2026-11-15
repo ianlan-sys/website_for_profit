@@ -1,0 +1,20 @@
+[Unit]
+Description=Yiqian reflection website
+After=network.target
+
+[Service]
+Type=simple
+User=yiqian
+Group=yiqian
+WorkingDirectory=/opt/yiqian
+EnvironmentFile=/opt/yiqian/.env
+ExecStart=/usr/bin/node /opt/yiqian/backend/server.mjs
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f1e8">
+  <meta name="description" content="摇一筒心愿，选一支今日签。让一段温柔的文字，陪你迈出今天的一小步。">
+  <title>一签 · 给心事一个温柔的回音</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./config.js"></script>
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <svg class="icon-defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 5.7a5.3 5.3 0 0 0-7.5 0L12 7l-1.3-1.3a5.3 5.3 0 0 0-7.5 7.5L12 22l8.8-8.8a5.3 5.3 0 0 0 0-7.5Z" transform="translate(0 -2) scale(1 .95)"/></symbol>
+    <symbol id="i-work" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="14" rx="3"/><path d="M8 7V4h8v3M3 12c6 4 12 4 18 0M12 12v5"/></symbol>
+    <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m16 8-2.5 5.5L8 16l2.5-5.5Z"/></symbol>
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M12 22v-9M12 16C4 16 3 11 3 6c6 0 9 3 9 10ZM12 12C12 5 15 2 21 2c0 7-3 10-9 10Z"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 3h14v19l-7-4-7 4Z"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 2c0 7-3 10-10 10 7 0 10 3 10 10 0-7 3-10 10-10-7 0-10-3-10-10Z"/></symbol>
+  </defs></svg>
+  <div class="site-shell">
+    <header class="site-header">
+      <button class="brand" id="home" aria-label="一签首页"><span class="brand-seal">签</span><span class="brand-word">一签<span class="brand-en">YI QIAN</span></span></button>
+      <nav aria-label="主导航"><button class="nav-button" id="about-open">关于一签</button><button class="nav-button journal-link" id="journal-open"><svg class="icon"><use href="#i-book"/></svg>我的签笺<span id="saved-count" class="count" hidden>0</span></button></nav>
+    </header>
+    <main id="main">
+      <section id="ritual-view" class="view ritual-home" aria-labelledby="ritual-title">
+        <div class="ritual-intro"><p class="eyebrow"><span class="tiny-line"></span> 一 日 一 签 · 把 温 柔 留 给 今 天</p><h1 id="ritual-title" tabindex="-1">摇一筒心愿，<br>接一签<span class="ink-accent">温柔。</span></h1><p class="hero-description">先把纷扰轻轻放下。<br>四支签，四种牵挂。<br>凭此刻的心意，选一支你的今日签。</p><div class="ritual-meta"><span class="today-dot"></span><time id="today-date"></time><span>此刻，宜善待自己</span></div><div class="intro-seal">心有所念<br>签有回音</div></div>
+        <div class="ritual-experience"><div class="ritual-stage" id="ritual-stage" aria-busy="true"><div class="ritual-orbit orbit-a" aria-hidden="true"></div><div class="ritual-orbit orbit-b" aria-hidden="true"></div><span class="stage-star star-a" aria-hidden="true">✦</span><span class="stage-star star-b" aria-hidden="true">✧</span><div class="ground-shadow" aria-hidden="true"></div>
+          <div class="stick-deck" role="group" aria-label="选择一根今日主题签">
+            <button class="fortune-stick theme-love" data-topic="love" disabled aria-label="抽取爱情今日签"><span class="stick-number">壹</span><span class="stick-title">爱情</span><span class="stick-caption">心有所依</span><svg class="icon"><use href="#i-heart"/></svg></button>
+            <button class="fortune-stick theme-work" data-topic="work" disabled aria-label="抽取事业今日签"><span class="stick-number">贰</span><span class="stick-title">事业</span><span class="stick-caption">步有所向</span><svg class="icon"><use href="#i-work"/></svg></button>
+            <button class="fortune-stick theme-lost" data-topic="lost" disabled aria-label="抽取迷茫今日签"><span class="stick-number">叁</span><span class="stick-title">迷茫</span><span class="stick-caption">雾里见光</span><svg class="icon"><use href="#i-compass"/></svg></button>
+            <button class="fortune-stick theme-growth" data-topic="growth" disabled aria-label="抽取成长今日签"><span class="stick-number">肆</span><span class="stick-title">成长</span><span class="stick-caption">自有花期</span><svg class="icon"><use href="#i-leaf"/></svg></button>
+          </div><div class="fortune-jar" id="fortune-jar" aria-hidden="true"><div class="jar-mouth"></div><div class="jar-body"><div class="jar-top-band"></div><div class="jar-label"><span>一念一签</span><b>签</b><span>万事从心</span></div><div class="jar-bottom-band"></div></div><div class="jar-base"></div></div>
+        </div><div class="ritual-controls"><p id="ritual-status" role="status" aria-live="polite">签筒轻摇，好好呼吸一下。</p><div class="control-buttons"><button class="text-button" id="skip-animation">跳过动画，直接选签 →</button><button class="text-button" id="shake-again" hidden>↻ 再摇一摇</button></div><p class="ritual-footnote">无需生辰，无需说出秘密。跟着直觉就好。</p></div></div>
+        <div class="ritual-strip"><span class="strip-label">一场小小的心灵仪式</span><div><span><b>一</b> 轻摇签筒</span><i>·</i><span><b>二</b> 选今日签</span><i>·</i><span><b>三</b> 听温柔回音</span><i>·</i><span><b>四</b> 走小小一步</span></div><span class="strip-time">约 2 分钟</span></div>
+      </section>
+      <section id="result-view" class="view result-view" hidden aria-labelledby="result-title">
+        <button class="text-button back-button" id="restart">← 回到签筒</button>
+        <div class="result-grid"><div id="reading-card" class="reading-card"></div><div class="reading-copy">
+          <div class="eyebrow">03 · 给 你 的 温 柔 回 音 <span id="result-topic" class="topic-tag"></span></div>
+          <h1 id="result-title" tabindex="-1"></h1><div id="reading-body" class="reading-body"></div>
+          <div class="small-action"><div class="action-heading"><svg class="icon"><use href="#i-spark"/></svg><span>04 · 今日的一小步</span><span class="time-tag" id="action-time"></span></div><p id="action-text"></p><label class="action-check"><input id="action-done" type="checkbox"><span>我愿意，为自己试一试</span></label><p class="done-note" id="done-note" hidden>这一点愿意，就已经是一个开始。</p></div>
+          <div class="result-actions"><button id="save" class="primary"><svg class="icon"><use href="#i-book"/></svg><span>收好这张签</span></button><button id="another" class="text-button">再摇一筒 ↗</button></div>
+          <p id="source-note" class="source-note"></p><p class="save-note">签笺仅保存在这台设备的当前浏览器。</p>
+        </div></div>
+      </section>
+    </main>
+    <footer class="site-footer"><span>一签，一念，一点向前的勇气。</span><span>签文供娱乐与自省，未来由你书写。<span class="footer-stamp">安</span></span></footer>
+  </div>
+  <dialog id="journal-modal" aria-labelledby="journal-title"><div class="dialog-header"><div><p class="eyebrow">LITTLE MOMENTS, KEPT</p><h2 id="journal-title">我的签笺</h2></div><button class="icon-button" data-close aria-label="关闭签笺"><svg class="icon"><use href="#i-close"/></svg></button></div><p class="dialog-intro">留住那些，曾让心轻一点的瞬间。仅保存在当前浏览器；清除浏览器数据会一并移除。</p><div id="journal-list"></div></dialog>
+  <dialog id="about-modal" aria-labelledby="about-title"><div class="dialog-header"><div><p class="eyebrow">A LITTLE SPACE TO EXHALE</p><h2 id="about-title">一签，给心一个空隙。</h2></div><button class="icon-button" data-close aria-label="关闭关于一签"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="about-copy"><p>生活里，有些时刻，我们需要的只是一句「慢慢来」。一签把抽签的小仪式，变成一段与自己相处的时间。</p><p>签筒轻摇后，爱情、事业、迷茫、成长四根主题签会依次弹出。选一根，读一段温柔的话，再带走一件今天就能做的小事。</p><p>这里提供主题签文；启用模型服务后，也可由 AI 生成解读。每次结果会注明来源。签文用于娱乐和自我反思，不预测未来，也不判断吉凶。留下对你有帮助的话，其余的，轻轻放下就好。</p><div class="about-note">无需账号，不收集生辰或个人心事。收藏只存在当前浏览器中，你可以随时删除。启用 AI 时，仅发送所选主题和日期给模型服务，不发送你的收藏。</div></div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

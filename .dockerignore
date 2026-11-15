@@ -1,0 +1,12 @@
+.git
+.openai
+.env
+.env.*
+!.env.example
+node_modules
+dist
+tests
+docs
+*.zip
+*.tar.gz
+*.log
