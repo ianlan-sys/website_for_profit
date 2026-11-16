@@ -70,6 +70,19 @@ Caddy 已有配置示例：
 
 `TRUST_PROXY=true` 只用于后端无法被公网直接访问、请求必经你控制的代理的配置。代理应覆盖或正确追加真实来源 IP。直接运行服务时保持 `TRUST_PROXY=false`。
 
+## 路线 C：VPS 已有系统 Caddy（占用 80/443）
+
+```sh
+cp deploy/compose.host-proxy.yaml compose.override.yaml
+docker compose up -d --build app          # 只启动 app，不要启动自带的 caddy
+cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak-$(date +%Y%m%d%H%M%S)
+sed 's/YIQIAN_DOMAIN/你的域名/' deploy/host-caddy.caddy > /etc/caddy/yiqian.caddy
+grep -q 'import /etc/caddy/yiqian.caddy' /etc/caddy/Caddyfile || echo 'import /etc/caddy/yiqian.caddy' >> /etc/caddy/Caddyfile
+caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile && systemctl reload caddy
+```
+
+不要在此路线下执行不带 `app` 的 `docker compose up`，否则自带 caddy 会去抢 80/443。
+
 ## 域名走 Cloudflare 代理（橙色云朵）时
 
 `deploy/Caddyfile` 已只信任 Cloudflare 官方 IP 段，并从 `CF-Connecting-IP` 取访客真实 IP，否则所有访客会共用 Cloudflare 节点 IP，触发同一个限流。

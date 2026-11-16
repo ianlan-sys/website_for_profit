@@ -7,3 +7,4 @@ coverage/
 *.zip
 *.tar.gz
 .DS_Store
+compose.override.yaml

@@ -1,0 +1,7 @@
+# Use when the VPS already has a reverse proxy on 80/443:
+#   cp deploy/compose.host-proxy.yaml compose.override.yaml
+#   docker compose up -d --build app      # start ONLY the app, not the bundled caddy
+services:
+  app:
+    ports:
+      - "127.0.0.1:3000:3000"
