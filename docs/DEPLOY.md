@@ -70,6 +70,14 @@ Caddy 已有配置示例：
 
 `TRUST_PROXY=true` 只用于后端无法被公网直接访问、请求必经你控制的代理的配置。代理应覆盖或正确追加真实来源 IP。直接运行服务时保持 `TRUST_PROXY=false`。
 
+## 域名走 Cloudflare 代理（橙色云朵）时
+
+`deploy/Caddyfile` 已只信任 Cloudflare 官方 IP 段，并从 `CF-Connecting-IP` 取访客真实 IP，否则所有访客会共用 Cloudflare 节点 IP，触发同一个限流。
+
+1. 首次部署时，先把 DNS 记录设为「仅 DNS」（灰色云朵），等 Caddy 签好 HTTPS 证书，`https://你的域名/api/health` 能打开。
+2. 再切回「已代理」（橙色云朵），并在 Cloudflare 的 SSL/TLS 中把加密模式设为 **Full (strict)**。不要用 Flexible，否则会出现重定向循环。
+3. Cloudflare IP 段偶尔更新，可对照 https://www.cloudflare.com/ips/ 检查 Caddyfile。
+
 ## 接入模型后的检查
 
 - `/api/health` 返回 `mode: ai` 只表示已填写模型配置，不代表供应商已经连通。

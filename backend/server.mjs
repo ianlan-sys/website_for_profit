@@ -6,7 +6,7 @@ import { isIP } from 'node:net';
 import { curatedReading,generateReading } from './model.mjs';
 import { topics } from '../frontend/readings.js';
 const ROOT=fileURLToPath(new URL('../frontend/',import.meta.url));
-const MIME={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.json':'application/json; charset=utf-8'};
+const MIME={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.jpg':'image/jpeg','.json':'application/json; charset=utf-8'};
 const CSP="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; object-src 'none'";
 function integer(value,fallback,min,max){if(value===undefined||value==='')return fallback;const n=Number(value);if(!Number.isInteger(n)||n<min||n>max)throw Error('Invalid numeric server configuration');return n;}
 export function configFromEnv(env=process.env) {
