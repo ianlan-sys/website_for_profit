@@ -51,27 +51,44 @@ async function boundedJson(response) {
   const text=Buffer.concat(chunks).toString('utf8');
   try{return JSON.parse(text);}catch{throw new ModelError('INVALID_OUTPUT','response is not JSON: '+text.slice(0,120));}
 }
+// MODEL_NAME may list several models (comma-separated). A busy or failing model (HTTP 429/5xx, network error)
+// hands over to the next one; bad output or the shared timeout stops immediately.
 async function callModel(system,user,config,{fetchImpl=fetch,timeoutMs=config.timeoutMs,maxTokens=config.maxTokens}={}) {
   const base=new URL(config.baseUrl.endsWith('/')?config.baseUrl:config.baseUrl+'/');
   const endpoint=new URL('chat/completions',base);
+  const models=config.models?.length?config.models:[config.model];
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),timeoutMs);timer.unref?.();
+  const tried=[];
   try {
-    const body={model:config.model,messages:[{role:'system',content:system},{role:'user',content:user}],stream:false};
-    if(config.jsonMode)body.response_format={type:'json_object'};
-    if(config.disableThinking)body.thinking={type:'disabled'};
-    if(config.reasoningEffort)body.reasoning_effort=config.reasoningEffort;
-    body[config.tokenParameter]=maxTokens;
-    const response=await fetchImpl(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+config.apiKey},body:JSON.stringify(body),signal:controller.signal,redirect:'error'});
-    if(!response.ok){let text='';try{text=(await response.text()).slice(0,240);}catch{}throw new ModelError('UPSTREAM_UNAVAILABLE','HTTP '+response.status+' '+text);}
-    const envelope=await boundedJson(response);
-    const content=envelope?.choices?.[0]?.message?.content;
-    if(typeof content!=='string')throw new ModelError('INVALID_OUTPUT','no choices[0].message.content; finish_reason='+envelope?.choices?.[0]?.finish_reason);
-    try{return JSON.parse(content.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,''));}catch{throw new ModelError('INVALID_OUTPUT','content is not JSON: '+content.slice(0,160));}
-  } catch(error) {
-    if(error instanceof ModelError)throw error;
-    throw new ModelError(controller.signal.aborted?'MODEL_TIMEOUT':'UPSTREAM_UNAVAILABLE',controller.signal.aborted?'no answer within '+timeoutMs+'ms':(error?.cause?.code||error?.message||''));
+    for(const [index,model] of models.entries()) {
+      try {return await attempt(model);}
+      catch(error) {
+        tried.push(model+': '+error.detail);
+        if(!error.retryable||index===models.length-1||controller.signal.aborted)throw new ModelError(error.code,models.length>1?tried.join(' | '):error.detail);
+      }
+    }
   } finally {clearTimeout(timer);}
+  async function attempt(model) {
+    try {
+      const body={model,messages:[{role:'system',content:system},{role:'user',content:user}],stream:false};
+      if(config.jsonMode)body.response_format={type:'json_object'};
+      if(config.disableThinking)body.thinking={type:'disabled'};
+      if(config.reasoningEffort)body.reasoning_effort=config.reasoningEffort;
+      body[config.tokenParameter]=maxTokens;
+      const response=await fetchImpl(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+config.apiKey},body:JSON.stringify(body),signal:controller.signal,redirect:'error'});
+      if(!response.ok){let text='';try{text=(await response.text()).slice(0,240);}catch{}const error=new ModelError('UPSTREAM_UNAVAILABLE','HTTP '+response.status+' '+text);error.retryable=response.status===429||response.status>=500;throw error;}
+      const envelope=await boundedJson(response);
+      const content=envelope?.choices?.[0]?.message?.content;
+      if(typeof content!=='string')throw new ModelError('INVALID_OUTPUT','no choices[0].message.content; finish_reason='+envelope?.choices?.[0]?.finish_reason);
+      try{return JSON.parse(content.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,''));}catch{throw new ModelError('INVALID_OUTPUT','content is not JSON: '+content.slice(0,160));}
+    } catch(error) {
+      if(error instanceof ModelError)throw error;
+      const aborted=controller.signal.aborted;
+      const wrapped=new ModelError(aborted?'MODEL_TIMEOUT':'UPSTREAM_UNAVAILABLE',aborted?'no answer within '+timeoutMs+'ms':(error?.cause?.code||error?.message||''));
+      wrapped.retryable=!aborted;throw wrapped;
+    }
+  }
 }
 export async function generateReading(qian,aspect,config,{fetchImpl=fetch}={}) {
   const parsed=await callModel(SYSTEM_PROMPT,questionFor(qian,aspect,'请为这支签解签。'),config,{fetchImpl});

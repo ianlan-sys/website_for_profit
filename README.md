@@ -21,7 +21,7 @@ node --env-file-if-exists=.env backend/server.mjs
 ```dotenv
 MODEL_BASE_URL=https://open.bigmodel.cn/api/paas/v4
 MODEL_API_KEY=你的密钥
-MODEL_NAME=控制台里显示的免费模型名（例如 GLM Flash 系列）
+MODEL_NAME=控制台里显示的免费模型名，可写多个用逗号分隔（第一个繁忙时自动换下一个）
 MODEL_DISABLE_THINKING=true
 ```
 
