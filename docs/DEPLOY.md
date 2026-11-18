@@ -91,6 +91,11 @@ caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile && systemctl re
 2. 再切回「已代理」（橙色云朵），并在 Cloudflare 的 SSL/TLS 中把加密模式设为 **Full (strict)**。不要用 Flexible，否则会出现重定向循环。
 3. Cloudflare IP 段偶尔更新，可对照 https://www.cloudflare.com/ips/ 检查 Caddyfile。
 
+## 分享预览与流量统计
+
+- 分享预览：`index.html` 的 Open Graph 标签中 `__ORIGIN__` 由服务器替换为 `PUBLIC_ORIGIN`（Docker 部署会按 DOMAIN 自动设置），配图为 `frontend/og-image.jpg`（1200×630）。WhatsApp、Telegram、Facebook、LINE 等会显示标题、简介和配图；微信普通聊天不读取这些标签，只显示链接（自定义卡片需公众号 JS-SDK）。社交平台会缓存预览，改图后可用各平台的调试工具刷新。
+- 流量统计：在 Cloudflare 后台为该域名开启 Web Analytics（自动注入），CSP 已放行 `static.cloudflareinsights.com` 与 `cloudflareinsights.com`。它不使用 cookie，只统计访问量、来源和页面性能。
+
 ## 接入模型后的检查
 
 - `/api/health` 返回 `mode: ai` 只表示已填写模型配置，不代表供应商已经连通。

@@ -48,3 +48,5 @@
 .tip-card.is-patron{flex-wrap:wrap}.tip-card.is-patron .tip-card-actions{flex-direction:row;flex-wrap:wrap;width:100%}.tip-card.is-patron .tip-cta{flex:1}#deep-make{width:100%}#card-make{width:auto;margin-top:4px}
 @media(max-width:580px){.deep-reading{padding:16px}.deep-plan li{flex-direction:column;gap:2px}}
 @media(prefers-reduced-motion:reduce){.deep-reading{animation:none}}
+/* 一日一签 */
+.today-tag{background:var(--copper);color:#fff8ef;padding:1px 7px;border-radius:2px;letter-spacing:2px;font-size:11px}.today-note{font-size:12px;line-height:1.9;color:#6f7c62;margin:12px auto 10px;max-width:320px}#today-open{min-width:200px}#extra-shake{display:flex;margin:6px auto 0}

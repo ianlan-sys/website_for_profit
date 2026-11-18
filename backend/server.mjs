@@ -8,8 +8,9 @@ import { curatedReading,generateReading,curatedDeep,generateDeep } from './model
 import { qians } from '../frontend/qian.js';
 import { topics } from '../frontend/readings.js';
 const ROOT=fileURLToPath(new URL('../frontend/',import.meta.url));
-const MIME={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.jpg':'image/jpeg','.json':'application/json; charset=utf-8'};
-const CSP="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; object-src 'none'";
+const MIME={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.jpg':'image/jpeg','.png':'image/png','.json':'application/json; charset=utf-8'};
+// Cloudflare Web Analytics (optional, enabled in the Cloudflare dashboard) injects its beacon from these two hosts.
+const CSP="default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self'; img-src 'self' data:; connect-src 'self' https://cloudflareinsights.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; object-src 'none'";
 function integer(value,fallback,min,max){if(value===undefined||value==='')return fallback;const n=Number(value);if(!Number.isInteger(n)||n<min||n>max)throw Error('Invalid numeric server configuration');return n;}
 export function configFromEnv(env=process.env) {
   const config={host:env.HOST||'127.0.0.1',port:integer(env.PORT,3000,0,65535),apiKey:env.MODEL_API_KEY||'',baseUrl:env.MODEL_BASE_URL||'https://api.openai.com/v1',model:env.MODEL_NAME||'',jsonMode:env.MODEL_JSON_MODE!=='false',tokenParameter:env.MODEL_TOKEN_PARAMETER||'max_tokens',maxTokens:integer(env.MODEL_MAX_TOKENS,1400,200,8000),deepMaxTokens:integer(env.MODEL_DEEP_MAX_TOKENS,2400,200,8000),deepTimeoutMs:integer(env.MODEL_DEEP_TIMEOUT_MS,45000,1000,90000),disableThinking:env.MODEL_DISABLE_THINKING==='true',reasoningEffort:env.MODEL_REASONING_EFFORT||'',timeoutMs:integer(env.MODEL_TIMEOUT_MS,25000,100,30000),fallback:env.MODEL_FALLBACK!=='false',publicOrigin:env.PUBLIC_ORIGIN||'',trustProxy:env.TRUST_PROXY==='true',rateWindowMs:integer(env.RATE_WINDOW_MS,60000,1000,3600000),rateMax:integer(env.RATE_MAX,8,1,1000),maxConcurrent:integer(env.MODEL_MAX_CONCURRENT,3,1,20),hourlyBudget:integer(env.MODEL_HOURLY_LIMIT,120,1,10000)};
@@ -76,6 +77,8 @@ export function createApp(config=configFromEnv(),{fetchImpl=fetch,now=Date.now}=
       const file=path.resolve(ROOT,'.'+(decoded==='/'?'/index.html':decoded));
       if(!file.startsWith(ROOT)||!MIME[path.extname(file)])return json(res,404,{error:{code:'NOT_FOUND',message:'页面不存在。'}});
       let bytes;try{bytes=await fs.readFile(file);}catch{return json(res,404,{error:{code:'NOT_FOUND',message:'页面不存在。'}});}
+      // Link previews need absolute URLs; only the configured PUBLIC_ORIGIN is used, never the Host header.
+      if(file===path.join(ROOT,'index.html'))bytes=Buffer.from(bytes.toString('utf8').replaceAll('__ORIGIN__',config.publicOrigin));
       res.writeHead(200,{'Content-Type':MIME[path.extname(file)],'Content-Length':bytes.length,'Cache-Control':'no-cache'});res.end(req.method==='HEAD'?undefined:bytes);
     } catch {if(!res.headersSent)json(res,500,{error:{code:'SERVER_ERROR',message:'暂时没能展开这支签，请稍后再试。'}});else res.end();}
   });

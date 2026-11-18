@@ -6,6 +6,17 @@
   <meta name="theme-color" content="#f5f1e8">
   <meta name="description" content="摇一筒心愿，选一支今日签。让一段温柔的文字，陪你迈出今天的一小步。">
   <title>一签 · 给心事一个温柔的回音</title>
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="一签">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:title" content="一签 · 摇一支今天的签">
+  <meta property="og:description" content="百支签里落下一支。掷筊请示，读一段温柔的解签，带走今天的一小步。">
+  <meta property="og:url" content="/">
+  <meta property="og:image" content="/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="一签的签筒与落下的一支签">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./style.css">
   <script src="./config.js"></script>
@@ -36,6 +47,7 @@
           <div class="fallen-stick" id="fallen-stick" aria-hidden="true"></div>
         </div><div class="ritual-controls"><p id="ritual-status" role="status" aria-live="polite">心里默念想问的事，签筒轻摇……</p>
           <div class="step" id="step-shake"><button class="primary shake-button" id="shake-button">摇一签</button><div class="control-buttons"><button class="text-button" id="skip-animation" hidden>跳过动画 →</button><button class="text-button sound-toggle" id="sound-toggle" aria-pressed="false">♪ 声音：关</button></div><p class="ritual-footnote">无需生辰，无需说出秘密。手机上也可以直接摇一摇。</p></div>
+          <div class="step" id="step-today" hidden><div class="qian-face"><p class="qian-meta"><span class="today-tag">今日签</span><span id="today-number"></span><span class="qian-level" id="today-level"></span></p><h2 id="today-name" tabindex="-1"></h2><p class="qian-poem" id="today-poem"></p></div><p class="today-note">一日一签。想再问别的事，可以补一签。</p><button class="primary" id="today-open">再读今日解签</button><button class="text-button" id="extra-shake">↻ 补一签</button></div>
           <div class="step" id="step-drawn" hidden><div class="qian-face"><p class="qian-meta"><span id="qian-number"></span><span class="qian-level" id="qian-level"></span></p><h2 id="qian-name" tabindex="-1"></h2><p class="qian-poem" id="qian-poem"></p></div>
             <div class="jiao-box" id="jiao-box"><div class="jiao-tray" aria-hidden="true"><span class="jiao jiao-a" id="jiao-a"></span><span class="jiao jiao-b" id="jiao-b"></span></div><p class="jiao-result" id="jiao-result">掷一次筊杯：一平一凸为「圣杯」，此签便是你的。</p><div class="jiao-actions"><button class="primary" id="jiao-button">掷筊请示</button><button class="text-button" id="skip-jiao">跳过，直接解签</button></div></div>
             <fieldset class="aspect-box" id="aspect-box" hidden><legend>你想问哪方面？</legend><div class="aspect-chips" id="aspect-chips"></div><button class="primary interpret-button" id="interpret">解签</button></fieldset>
