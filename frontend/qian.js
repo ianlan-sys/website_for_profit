@@ -1375,3 +1375,18 @@ export function composeReading(qian, aspect, pick) {
     action: guide.actions[act][0], time: guide.actions[act][1], seal: q.seal
   };
 }
+const WEEKS = ['第一周', '第二周', '第三周', '第四周'];
+// Built-in 深度解签 when no model is configured: the qian's meaning, every lens of the aspect, and a four-week plan.
+export function composeDeep(qian, aspect) {
+  const q = qians[qian - 1], guide = aspectGuides[aspect];
+  return {
+    qian, topic: aspect,
+    sections: [
+      { heading: '签意', text: q.meaning },
+      { heading: '关于' + aspectShort[aspect], text: guide.lens[0] + guide.lens[1] },
+      { heading: '换个角度', text: guide.lens[2] }
+    ],
+    plan: [...guide.actions.map((a, i) => ({ when: WEEKS[i], step: a[0] })), { when: WEEKS[3], step: '回头看看这一个月：哪一步最有帮助？把它留下来，变成你的小习惯。' }],
+    blessing: q.title.replace('\n', '')
+  };
+}

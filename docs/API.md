@@ -49,13 +49,21 @@ source 为 ai、curated（未配置模型或静态演示）、fallback（模型�
 
 状态码：400 非法 JSON/主题，403 非同域请求，405 方法错误，413 body 太大，415 非 JSON，429 限流/模型繁忙，502 模型异常且关闭回退，500 内部错误。429 响应包含 Retry-After。前端不自动重试生成请求，避免重复计费。
 
+## POST /api/deep
+
+深度解签（打赏后在页面解锁；页面无法核实转账，属君子之约，费用由限流与每小时上限控制）。请求与 /api/fortune 相同，但必须是 `{"qian":1-100,"aspect":"..."}`，不接受旧的 topic 格式。
+
+成功 200：`{"source":"ai|curated|fallback","generatedAt":"…","deep":{"qian":37,"topic":"work","sections":[{"heading":"…","text":"…"}×3],"plan":[{"when":"第一周","step":"…"}×4],"blessing":"…"}}`。
+
+模型使用独立的提示词、`MODEL_DEEP_TIMEOUT_MS`（默认 45 秒）和 `MODEL_DEEP_MAX_TOKENS`（默认 2400）。输出结构不合格时按 `MODEL_FALLBACK` 回退到内置深度解签。
+
 ## 模型适配
 
 `backend/model.mjs` 的 `generateReading()` 负责调用 OpenAI-compatible API：
 
 - 地址：MODEL_BASE_URL + `/chat/completions`
 - Header：Authorization: Bearer 后端密钥
-- Body：model、messages、stream:false、token 上限；可选 response_format:{type:json_object}
+- Body：model、messages、stream:false、token 上限；可选 response_format:{type:json_object}；`MODEL_DISABLE_THINKING=true` 时附加 thinking:{type:disabled}（智谱 GLM 混合思考模型用）
 - 返回：choices[0].message.content 内的 JSON 字符串
 - 超时、非 2xx、非法 JSON、字段不完整或超过 64 KiB 的上游返回均进入标准错误路径。
 - 不把供应商原始响应或密钥发送到浏览器；不自动跟随模型 API 重定向。

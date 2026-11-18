@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isIP } from 'node:net';
 import { randomInt } from 'node:crypto';
-import { curatedReading,generateReading } from './model.mjs';
+import { curatedReading,generateReading,curatedDeep,generateDeep } from './model.mjs';
 import { qians } from '../frontend/qian.js';
 import { topics } from '../frontend/readings.js';
 const ROOT=fileURLToPath(new URL('../frontend/',import.meta.url));
@@ -12,7 +12,7 @@ const MIME={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8',
 const CSP="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; object-src 'none'";
 function integer(value,fallback,min,max){if(value===undefined||value==='')return fallback;const n=Number(value);if(!Number.isInteger(n)||n<min||n>max)throw Error('Invalid numeric server configuration');return n;}
 export function configFromEnv(env=process.env) {
-  const config={host:env.HOST||'127.0.0.1',port:integer(env.PORT,3000,0,65535),apiKey:env.MODEL_API_KEY||'',baseUrl:env.MODEL_BASE_URL||'https://api.openai.com/v1',model:env.MODEL_NAME||'',jsonMode:env.MODEL_JSON_MODE!=='false',tokenParameter:env.MODEL_TOKEN_PARAMETER||'max_tokens',maxTokens:integer(env.MODEL_MAX_TOKENS,1400,200,8000),timeoutMs:integer(env.MODEL_TIMEOUT_MS,25000,100,30000),fallback:env.MODEL_FALLBACK!=='false',publicOrigin:env.PUBLIC_ORIGIN||'',trustProxy:env.TRUST_PROXY==='true',rateWindowMs:integer(env.RATE_WINDOW_MS,60000,1000,3600000),rateMax:integer(env.RATE_MAX,8,1,1000),maxConcurrent:integer(env.MODEL_MAX_CONCURRENT,3,1,20),hourlyBudget:integer(env.MODEL_HOURLY_LIMIT,120,1,10000)};
+  const config={host:env.HOST||'127.0.0.1',port:integer(env.PORT,3000,0,65535),apiKey:env.MODEL_API_KEY||'',baseUrl:env.MODEL_BASE_URL||'https://api.openai.com/v1',model:env.MODEL_NAME||'',jsonMode:env.MODEL_JSON_MODE!=='false',tokenParameter:env.MODEL_TOKEN_PARAMETER||'max_tokens',maxTokens:integer(env.MODEL_MAX_TOKENS,1400,200,8000),deepMaxTokens:integer(env.MODEL_DEEP_MAX_TOKENS,2400,200,8000),deepTimeoutMs:integer(env.MODEL_DEEP_TIMEOUT_MS,45000,1000,90000),disableThinking:env.MODEL_DISABLE_THINKING==='true',timeoutMs:integer(env.MODEL_TIMEOUT_MS,25000,100,30000),fallback:env.MODEL_FALLBACK!=='false',publicOrigin:env.PUBLIC_ORIGIN||'',trustProxy:env.TRUST_PROXY==='true',rateWindowMs:integer(env.RATE_WINDOW_MS,60000,1000,3600000),rateMax:integer(env.RATE_MAX,8,1,1000),maxConcurrent:integer(env.MODEL_MAX_CONCURRENT,3,1,20),hourlyBudget:integer(env.MODEL_HOURLY_LIMIT,120,1,10000)};
   if(!['max_tokens','max_completion_tokens'].includes(config.tokenParameter))throw Error('MODEL_TOKEN_PARAMETER must be max_tokens or max_completion_tokens');
   if(config.apiKey&&!config.model)throw Error('MODEL_NAME is required when MODEL_API_KEY is set');
   const u=new URL(config.baseUrl);
@@ -39,7 +39,8 @@ export function createApp(config=configFromEnv(),{fetchImpl=fetch,now=Date.now}=
     try {
       const url=new URL(req.url,'http://localhost');
       if(url.pathname==='/api/health'&&req.method==='GET')return json(res,200,{ok:true,mode:config.apiKey?'ai':'curated',version:'2.0.0'});
-      if(url.pathname==='/api/fortune') {
+      if(url.pathname==='/api/fortune'||url.pathname==='/api/deep') {
+        const deep=url.pathname==='/api/deep';
         if(req.method!=='POST')return json(res,405,{error:{code:'METHOD_NOT_ALLOWED',message:'请使用 POST 请求。'}},{Allow:'POST'});
         const expected=config.publicOrigin||'http://'+req.headers.host;
         if((req.headers.origin&&req.headers.origin!==expected)||req.headers['sec-fetch-site']==='cross-site')return json(res,403,{error:{code:'ORIGIN_DENIED',message:'请从网站页面发起请求。'}});
@@ -51,15 +52,16 @@ export function createApp(config=configFromEnv(),{fetchImpl=fetch,now=Date.now}=
         const chunks=[];let size=0;
         for await(const chunk of req){size+=chunk.length;if(size>2048){req.resume();return json(res,413,{error:{code:'BODY_TOO_LARGE',message:'请求内容过长。'}});}chunks.push(chunk);}
         let input;try{input=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{return json(res,400,{error:{code:'INVALID_JSON',message:'请求格式不正确。'}});}
-        const request=parseFortuneRequest(input);
+        const request=deep&&!Object.hasOwn(input??{},'qian')?null:parseFortuneRequest(input);
         if(!request)return json(res,400,{error:{code:'INVALID_TOPIC',message:'请先摇出一支签，再选择想问的方面。'}});
         const {qian,aspect}=request,generatedAt=new Date(now()).toISOString();
-        if(!config.apiKey)return json(res,200,{source:'curated',generatedAt,reading:curatedReading(qian,aspect)});
+        const curated=()=>deep?{deep:curatedDeep(qian,aspect)}:{reading:curatedReading(qian,aspect)};
+        if(!config.apiKey)return json(res,200,{source:'curated',generatedAt,...curated()});
         const hour=Math.floor(now()/3600000);if(hour!==budgetHour){budgetHour=hour;budgetUsed=0;}
         if(active>=config.maxConcurrent||budgetUsed>=config.hourlyBudget)return json(res,429,{error:{code:'MODEL_BUSY',message:'此刻来求签的人有些多，请稍后再试。'}},{'Retry-After':'60'});
         active++;budgetUsed++;
-        try {const reading=await generateReading(qian,aspect,config,{fetchImpl});return json(res,200,{source:'ai',generatedAt,reading});}
-        catch(error){if(config.fallback)return json(res,200,{source:'fallback',generatedAt,notice:'这次 AI 解签暂时没有送达，先送你一段一签的内置解签。',reading:curatedReading(qian,aspect)});return json(res,502,{error:{code:error.code||'MODEL_UNAVAILABLE',message:'签文暂时没有送达，请稍后再试。'}});}
+        try {const result=deep?{deep:await generateDeep(qian,aspect,config,{fetchImpl})}:{reading:await generateReading(qian,aspect,config,{fetchImpl})};return json(res,200,{source:'ai',generatedAt,...result});}
+        catch(error){if(config.fallback)return json(res,200,{source:'fallback',generatedAt,notice:'这次 AI 解签暂时没有送达，先送你一段一签的内置解签。',...curated()});return json(res,502,{error:{code:error.code||'MODEL_UNAVAILABLE',message:'签文暂时没有送达，请稍后再试。'}});}
         finally {active--;}
       }
       if(url.pathname.startsWith('/api/'))return json(res,404,{error:{code:'NOT_FOUND',message:'接口不存在。'}});

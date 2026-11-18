@@ -14,7 +14,20 @@ node --env-file-if-exists=.env backend/server.mjs
 
 打开 http://127.0.0.1:3000 。Windows 也可以双击 `start-local.cmd`。没有 `.env` 或模型密钥时，后端使用百签的内置解签；动画和收藏仍完整可用。
 
-## 接模型
+## 接模型（以智谱 GLM 为例）
+
+在智谱开放平台创建 API Key 后，`.env` 填：
+
+```dotenv
+MODEL_BASE_URL=https://open.bigmodel.cn/api/paas/v4
+MODEL_API_KEY=你的密钥
+MODEL_NAME=控制台里显示的免费模型名（例如 GLM Flash 系列）
+MODEL_DISABLE_THINKING=true
+```
+
+海外账号可用 `https://api.z.ai/api/paas/v4`。模型名、免费额度与参数支持以平台文档为准。
+
+## 接模型（通用）
 
 1. 将 `.env.example` 复制为 `.env`。
 2. 填入 `MODEL_BASE_URL`、`MODEL_API_KEY` 和 `MODEL_NAME`。
