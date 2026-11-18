@@ -10,12 +10,23 @@ const limits={title:80,action:240,time:20};
 function shortText(value,max) {
   return typeof value==='string' && value.trim().length>0 && value.length<=max && !/[<>\u0000-\u0008]/.test(value);
 }
+// Models often return the two paragraphs as one string separated by newlines, or split differently.
+// Normalise to exactly two paragraphs: split on newlines, merge extras, or cut one long paragraph at the sentence end nearest the middle.
+export function toParagraphs(value) {
+  let parts=Array.isArray(value)?value.filter(x=>typeof x==='string'):typeof value==='string'?[value]:null;
+  if(!parts)return null;
+  parts=parts.flatMap(x=>x.split(/\n+/)).map(x=>x.trim()).filter(Boolean);
+  if(parts.length===1){const text=parts[0],cuts=[...text.matchAll(/[。！？]/g)].map(m=>m.index+1).filter(i=>i<text.length);if(!cuts.length)return null;const mid=text.length/2,cut=cuts.reduce((a,b)=>Math.abs(b-mid)<Math.abs(a-mid)?b:a);parts=[text.slice(0,cut),text.slice(cut)];}
+  if(parts.length>2){const half=Math.ceil(parts.length/2);parts=[parts.slice(0,half).join(''),parts.slice(half).join('')];}
+  return parts.length===2?parts:null;
+}
 // The model only writes the interpretation. Name, poem, level and seal always come from the qian library.
 export function validateReading(value) {
   if(!value || typeof value!=='object' || Array.isArray(value)) throw new ModelError('INVALID_OUTPUT','output is not a JSON object');
   for(const [key,max] of Object.entries(limits)) if(!shortText(value[key],max)) throw new ModelError('INVALID_OUTPUT','bad field '+key+': '+JSON.stringify(value[key])?.slice(0,80));
-  if(!Array.isArray(value.body) || value.body.length!==2 || !value.body.every(x=>shortText(x,400))) throw new ModelError('INVALID_OUTPUT','bad field body: '+JSON.stringify(value.body)?.slice(0,120));
-  return {title:value.title,body:[...value.body],action:value.action,time:value.time};
+  const body=toParagraphs(value.body);
+  if(!body || !body.every(x=>shortText(x,400))) throw new ModelError('INVALID_OUTPUT','bad field body: '+JSON.stringify(value.body)?.slice(0,120));
+  return {title:value.title,body,action:value.action,time:value.time};
 }
 export function curatedReading(qian,aspect) {
   return composeReading(qian,aspect,randomInt);
@@ -34,10 +45,10 @@ export function validateDeep(value) {
 }
 export const SYSTEM_PROMPT=`你是一签的解签人。用户摇到一支签，并选了想问的方面。请结合这支签的签名、签诗和签意，围绕所问方面写一段温柔、具体、有陪伴感的解签。签文是娱乐与自省，不是真实预测。
 不要宣称知道用户未提供的经历、性格或他人的内心。不要保证未来、制造灾祸或焦虑，不给医疗、法律、投资决策，不诱导付费消灾。尊重用户自主性，避免空洞夸赞和说教。签等只有上上、上、中、平，不要说成凶签。
-只输出一个 JSON 对象，不要 Markdown 或 HTML。字段：title（温柔短句，可含换行，最多40字）、body（恰好两段，每段50-110字：第一段把签诗的意象和所问方面连起来，第二段提供可选择的视角）、action（与所问方面相关、今天可做的低门槛小事，最多80字）、time（例如3 分钟）。不得输出额外字段。`;
+只输出一个 JSON 对象，不要 Markdown 或 HTML。字段：title（温柔短句，可含换行，最多40字）、body（恰好两段，每段50-110字：第一段把签诗的意象和所问方面连起来，第二段提供可选择的视角）、action（与所问方面相关、今天可做的低门槛小事，最多80字）、time（例如3 分钟）。不得输出额外字段。body 必须是包含两个字符串的数组，格式示例：{"title":"……","body":["第一段……","第二段……"],"action":"……","time":"3 分钟"}`;
 export const DEEP_PROMPT=`你是一签的解签人，正在为请过茶的访客写「深度解签」。请结合这支签的签名、签诗、签意和所问方面，写得比普通解签更具体、更有层次，但仍然温柔、克制。签文是娱乐与自省，不是真实预测。
 不要宣称知道用户未提供的经历、性格或他人的内心。不要保证未来、制造灾祸或焦虑，不给医疗、法律、投资决策，不诱导付费消灾。签等只有上上、上、中、平，不要说成凶签。
-只输出一个 JSON 对象，不要 Markdown 或 HTML。字段：sections（恰好三项，每项含 heading（2-10字小标题）与 text（80-180字）；第一项解读签诗意象，第二项结合所问方面谈此刻的处境，第三项提供一个新的视角）、plan（恰好四项，对应接下来四周，每项含 when（如「第一周」）与 step（一件具体、低门槛的小行动，最多60字））、blessing（一句不超过30字的寄语）。不得输出额外字段。`;
+只输出一个 JSON 对象，不要 Markdown 或 HTML。字段：sections（恰好三项，每项含 heading（2-10字小标题）与 text（80-180字）；第一项解读签诗意象，第二项结合所问方面谈此刻的处境，第三项提供一个新的视角）、plan（恰好四项，对应接下来四周，每项含 when（如「第一周」）与 step（一件具体、低门槛的小行动，最多60字））、blessing（一句不超过30字的寄语）。不得输出额外字段。格式示例：{"sections":[{"heading":"……","text":"……"},{"heading":"……","text":"……"},{"heading":"……","text":"……"}],"plan":[{"when":"第一周","step":"……"},{"when":"第二周","step":"……"},{"when":"第三周","step":"……"},{"when":"第四周","step":"……"}],"blessing":"……"}`;
 function questionFor(qian,aspect,instruction) {
   const q=qians[qian-1];
   return JSON.stringify({签号:'第'+qian+'签',签名:q.name,签等:q.level,签诗:q.poem.join('，'),签意:q.meaning,所问方面:topics[aspect],日期:new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai'}).format(new Date()),指令:instruction});

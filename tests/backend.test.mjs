@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
 import {createApp,configFromEnv} from '../backend/server.mjs';
-import {generateReading,validateReading,validateDeep,DEEP_PROMPT,SYSTEM_PROMPT} from '../backend/model.mjs';
+import {generateReading,validateReading,validateDeep,toParagraphs,DEEP_PROMPT,SYSTEM_PROMPT} from '../backend/model.mjs';
 import {createApp as _unused,parseFortuneRequest} from '../backend/server.mjs';
 import {qians,aspectOrder,aspectGuides,composeReading,cnNumber} from '../frontend/qian.js';
 import {topics} from '../frontend/readings.js';
@@ -48,3 +48,5 @@ const a=await app(t,{MODEL_API_KEY:'k',MODEL_NAME:'free-a, free-b'},{fetchImpl:b
 calls.length=0;const lines=[];const original=console.warn;console.warn=l=>lines.push(l);t.after(()=>{console.warn=original;});const allBusy=await app(t,{MODEL_API_KEY:'k',MODEL_NAME:'free-a,free-a'},{fetchImpl:busyFirst});assert.equal((await(await allBusy.post({qian:4,aspect:'work'})).json()).source,'fallback');assert.equal(calls.length,2);assert.match(JSON.parse(lines.at(-1)).detail,/free-a: HTTP 429.*\| free-a: HTTP 429/);
 calls.length=0;const badFirst=await app(t,{MODEL_API_KEY:'k',MODEL_NAME:'m1,m2'},{fetchImpl:async(url,options)=>{calls.push(JSON.parse(options.body).model);return modelResponse({...valid,body:'x'});}});assert.equal((await(await badFirst.post({qian:4,aspect:'work'})).json()).source,'fallback');assert.deepEqual(calls,['m1'],'invalid output is not retried on another model');
 assert.throws(()=>configFromEnv({MODEL_NAME:'a,b,c,d,e'}),/up to 4/);assert.throws(()=>configFromEnv({MODEL_NAME:'bad name'}),/up to 4/);assert.equal(configFromEnv({MODEL_NAME:' glm-4.7-flash '}).model,'glm-4.7-flash');});
+test('Body paragraphs are normalised from common model shapes',async t=>{assert.deepEqual(toParagraphs('第一段。\n\n第二段。'),['第一段。','第二段。']);assert.deepEqual(toParagraphs(['甲。','乙。']),['甲。','乙。']);assert.deepEqual(toParagraphs(['一。','二。','三。']),['一。二。','三。']);assert.deepEqual(toParagraphs(['一段\n两段']),['一段','两段']);assert.deepEqual(toParagraphs('前面一句话。中间又一句话。最后一句话。'),['前面一句话。','中间又一句话。最后一句话。']);for(const bad of ['没有句号的一段',[],[1,2],null,{a:1}])assert.equal(toParagraphs(bad),null);
+const a=await app(t,{MODEL_API_KEY:'k',MODEL_NAME:'m'},{fetchImpl:async()=>modelResponse({...valid,body:'在事业的十字路口，唯有灯塔能照亮归航。\n\n你可以选择静心审视自己的初心。'})});const d=await(await a.post({qian:37,aspect:'work'})).json();assert.equal(d.source,'ai');assert.deepEqual(d.reading.body,['在事业的十字路口，唯有灯塔能照亮归航。','你可以选择静心审视自己的初心。']);assert.ok(SYSTEM_PROMPT.includes('"body":["'));});
