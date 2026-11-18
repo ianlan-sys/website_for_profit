@@ -3,7 +3,8 @@ import { topics } from '../frontend/readings.js';
 import { qians, composeReading, composeDeep } from '../frontend/qian.js';
 
 export class ModelError extends Error {
-  constructor(code) { super(code); this.code=code; }
+  // detail is for server logs only (never sent to the browser): status, provider message or the field that failed.
+  constructor(code,detail='') { super(code); this.code=code; this.detail=String(detail).slice(0,300); }
 }
 const limits={title:80,action:240,time:20};
 function shortText(value,max) {
@@ -11,9 +12,9 @@ function shortText(value,max) {
 }
 // The model only writes the interpretation. Name, poem, level and seal always come from the qian library.
 export function validateReading(value) {
-  if(!value || typeof value!=='object' || Array.isArray(value)) throw new ModelError('INVALID_OUTPUT');
-  for(const [key,max] of Object.entries(limits)) if(!shortText(value[key],max)) throw new ModelError('INVALID_OUTPUT');
-  if(!Array.isArray(value.body) || value.body.length!==2 || !value.body.every(x=>shortText(x,400))) throw new ModelError('INVALID_OUTPUT');
+  if(!value || typeof value!=='object' || Array.isArray(value)) throw new ModelError('INVALID_OUTPUT','output is not a JSON object');
+  for(const [key,max] of Object.entries(limits)) if(!shortText(value[key],max)) throw new ModelError('INVALID_OUTPUT','bad field '+key+': '+JSON.stringify(value[key])?.slice(0,80));
+  if(!Array.isArray(value.body) || value.body.length!==2 || !value.body.every(x=>shortText(x,400))) throw new ModelError('INVALID_OUTPUT','bad field body: '+JSON.stringify(value.body)?.slice(0,120));
   return {title:value.title,body:[...value.body],action:value.action,time:value.time};
 }
 export function curatedReading(qian,aspect) {
@@ -24,11 +25,11 @@ export function curatedDeep(qian,aspect) {
 }
 // 深度解签: three sections, a four-week plan, one blessing. Strict shape so the page can render it as text only.
 export function validateDeep(value) {
-  if(!value || typeof value!=='object' || Array.isArray(value)) throw new ModelError('INVALID_OUTPUT');
+  if(!value || typeof value!=='object' || Array.isArray(value)) throw new ModelError('INVALID_OUTPUT','output is not a JSON object');
   const {sections,plan,blessing}=value;
-  if(!Array.isArray(sections)||sections.length!==3||!sections.every(x=>x&&shortText(x.heading,16)&&shortText(x.text,400))) throw new ModelError('INVALID_OUTPUT');
-  if(!Array.isArray(plan)||plan.length!==4||!plan.every(x=>x&&shortText(x.when,12)&&shortText(x.step,160))) throw new ModelError('INVALID_OUTPUT');
-  if(!shortText(blessing,60)) throw new ModelError('INVALID_OUTPUT');
+  if(!Array.isArray(sections)||sections.length!==3||!sections.every(x=>x&&shortText(x.heading,16)&&shortText(x.text,400))) throw new ModelError('INVALID_OUTPUT','bad field sections: '+JSON.stringify(sections)?.slice(0,120));
+  if(!Array.isArray(plan)||plan.length!==4||!plan.every(x=>x&&shortText(x.when,12)&&shortText(x.step,160))) throw new ModelError('INVALID_OUTPUT','bad field plan: '+JSON.stringify(plan)?.slice(0,120));
+  if(!shortText(blessing,60)) throw new ModelError('INVALID_OUTPUT','bad field blessing: '+JSON.stringify(blessing)?.slice(0,80));
   return {sections:sections.map(x=>({heading:x.heading,text:x.text})),plan:plan.map(x=>({when:x.when,step:x.step})),blessing};
 }
 export const SYSTEM_PROMPT=`你是一签的解签人。用户摇到一支签，并选了想问的方面。请结合这支签的签名、签诗和签意，围绕所问方面写一段温柔、具体、有陪伴感的解签。签文是娱乐与自省，不是真实预测。
@@ -43,11 +44,12 @@ function questionFor(qian,aspect,instruction) {
 }
 async function boundedJson(response) {
   const reader=response.body?.getReader();
-  if(!reader) throw new ModelError('INVALID_OUTPUT');
+  if(!reader) throw new ModelError('INVALID_OUTPUT','empty response body');
   const chunks=[];let size=0;
   try {for(;;){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>65536){await reader.cancel();throw new ModelError('OUTPUT_TOO_LARGE');}chunks.push(value);}}
   finally {reader.releaseLock();}
-  try{return JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{throw new ModelError('INVALID_OUTPUT');}
+  const text=Buffer.concat(chunks).toString('utf8');
+  try{return JSON.parse(text);}catch{throw new ModelError('INVALID_OUTPUT','response is not JSON: '+text.slice(0,120));}
 }
 async function callModel(system,user,config,{fetchImpl=fetch,timeoutMs=config.timeoutMs,maxTokens=config.maxTokens}={}) {
   const base=new URL(config.baseUrl.endsWith('/')?config.baseUrl:config.baseUrl+'/');
@@ -60,14 +62,14 @@ async function callModel(system,user,config,{fetchImpl=fetch,timeoutMs=config.ti
     if(config.disableThinking)body.thinking={type:'disabled'};
     body[config.tokenParameter]=maxTokens;
     const response=await fetchImpl(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+config.apiKey},body:JSON.stringify(body),signal:controller.signal,redirect:'error'});
-    if(!response.ok){await response.body?.cancel();throw new ModelError('UPSTREAM_UNAVAILABLE');}
+    if(!response.ok){let text='';try{text=(await response.text()).slice(0,240);}catch{}throw new ModelError('UPSTREAM_UNAVAILABLE','HTTP '+response.status+' '+text);}
     const envelope=await boundedJson(response);
     const content=envelope?.choices?.[0]?.message?.content;
-    if(typeof content!=='string')throw new ModelError('INVALID_OUTPUT');
-    try{return JSON.parse(content.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,''));}catch{throw new ModelError('INVALID_OUTPUT');}
+    if(typeof content!=='string')throw new ModelError('INVALID_OUTPUT','no choices[0].message.content; finish_reason='+envelope?.choices?.[0]?.finish_reason);
+    try{return JSON.parse(content.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,''));}catch{throw new ModelError('INVALID_OUTPUT','content is not JSON: '+content.slice(0,160));}
   } catch(error) {
     if(error instanceof ModelError)throw error;
-    throw new ModelError(controller.signal.aborted?'MODEL_TIMEOUT':'UPSTREAM_UNAVAILABLE');
+    throw new ModelError(controller.signal.aborted?'MODEL_TIMEOUT':'UPSTREAM_UNAVAILABLE',controller.signal.aborted?'no answer within '+timeoutMs+'ms':(error?.cause?.code||error?.message||''));
   } finally {clearTimeout(timer);}
 }
 export async function generateReading(qian,aspect,config,{fetchImpl=fetch}={}) {

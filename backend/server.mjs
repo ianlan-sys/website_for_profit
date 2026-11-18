@@ -34,6 +34,8 @@ export function createApp(config=configFromEnv(),{fetchImpl=fetch,now=Date.now}=
   const buckets=new Map();let active=0,budgetHour=0,budgetUsed=0;
   function json(res,status,data,extra={}){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...extra});res.end(JSON.stringify(data));}
   function allowedRate(ip){const time=now();if(buckets.size>5000)for(const [key,val]of buckets)if(val.until<=time)buckets.delete(key);let value=buckets.get(ip);if(!value||value.until<=time){if(buckets.size>=10000&&!buckets.has(ip))return false;value={used:0,until:time+config.rateWindowMs};buckets.set(ip,value);}return ++value.used<=config.rateMax;}
+  // One line per failed model call so `docker compose logs app` shows why a fallback happened. The key is scrubbed.
+  function logModelError(endpoint,error){let detail=String(error?.detail||'');if(config.apiKey)detail=detail.split(config.apiKey).join('***');console.warn(JSON.stringify({event:'model_error',endpoint,code:error?.code||'UNKNOWN',detail}));}
   const server=http.createServer(async(req,res)=>{
     res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('Content-Security-Policy',CSP);res.setHeader('Permissions-Policy','camera=(), microphone=(), geolocation=()');
     try {
@@ -61,7 +63,7 @@ export function createApp(config=configFromEnv(),{fetchImpl=fetch,now=Date.now}=
         if(active>=config.maxConcurrent||budgetUsed>=config.hourlyBudget)return json(res,429,{error:{code:'MODEL_BUSY',message:'此刻来求签的人有些多，请稍后再试。'}},{'Retry-After':'60'});
         active++;budgetUsed++;
         try {const result=deep?{deep:await generateDeep(qian,aspect,config,{fetchImpl})}:{reading:await generateReading(qian,aspect,config,{fetchImpl})};return json(res,200,{source:'ai',generatedAt,...result});}
-        catch(error){if(config.fallback)return json(res,200,{source:'fallback',generatedAt,notice:'这次 AI 解签暂时没有送达，先送你一段一签的内置解签。',...curated()});return json(res,502,{error:{code:error.code||'MODEL_UNAVAILABLE',message:'签文暂时没有送达，请稍后再试。'}});}
+        catch(error){logModelError(deep?'deep':'fortune',error);if(config.fallback)return json(res,200,{source:'fallback',generatedAt,notice:'这次 AI 解签暂时没有送达，先送你一段一签的内置解签。',...curated()});return json(res,502,{error:{code:error.code||'MODEL_UNAVAILABLE',message:'签文暂时没有送达，请稍后再试。'}});}
         finally {active--;}
       }
       if(url.pathname.startsWith('/api/'))return json(res,404,{error:{code:'NOT_FOUND',message:'接口不存在。'}});
