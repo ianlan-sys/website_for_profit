@@ -1,6 +1,6 @@
 # 一签 · 前后端完整项目
 
-进入网站，签筒轻摇；四根主题签「爱情、事业、迷茫、成长」弹出。点一根，展开今日签、温柔解读和今天的一小步。包含收藏、重读、删除与减少动态效果支持。
+进入网站，签筒轻摇，百签中落下一支；可掷筊请示（圣杯确认、笑杯再掷、阴杯重摇），再选想问的方面（综合、感情、事业、学业等 12 项）解签，得到签诗、温柔解读和今天的一小步。包含收藏、重读、删除与减少动态效果支持。
 
 ## 本地运行
 
@@ -12,7 +12,7 @@
 node --env-file-if-exists=.env backend/server.mjs
 ```
 
-打开 http://127.0.0.1:3000 。Windows 也可以双击 `start-local.cmd`。没有 `.env` 或模型密钥时，后端使用内置签文；动画和收藏仍完整可用。
+打开 http://127.0.0.1:3000 。Windows 也可以双击 `start-local.cmd`。没有 `.env` 或模型密钥时，后端使用百签的内置解签；动画和收藏仍完整可用。
 
 ## 接模型
 
@@ -31,7 +31,8 @@ node --env-file-if-exists=.env backend/server.mjs
 | `frontend/` | HTML / CSS / JS，动画、四主题选签、浏览器收藏 |
 | `backend/server.mjs` | HTTP 服务、API、限流和静态页面 |
 | `backend/model.mjs` | 模型适配、中文提示词、结构校验、超时 |
-| `frontend/readings.js` | 前后端共用的 16 条内置签文 |
+| `frontend/qian.js` | 前后端共用的百签签库、12 个问事方面与内置解签 |
+| `frontend/readings.js` | 问事方面名称；旧版 16 条主题签仅用于迁移旧收藏 |
 | `tests/` | 后端 HTTP、模型 mock、前端 DOM 流程测试 |
 | `.env.example` | 环境变量模板，无真实密钥 |
 | `Dockerfile` / `compose.yaml` | VPS 容器部署 |

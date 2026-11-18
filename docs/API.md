@@ -6,13 +6,15 @@
 
 ## POST /api/fortune
 
-同域调用，Content-Type 为 application/json，body 最大 2048 字节。仅允许字段 topic：
+同域调用，Content-Type 为 application/json，body 最大 2048 字节。字段恰好为 qian 与 aspect：
 
 ```json
-{"topic":"love"}
+{"qian":37,"aspect":"work"}
 ```
 
-主题枚举：love（爱情）、work（事业）、lost（迷茫）、growth（成长）。服务端不接收用户传入的模型地址、提示词、密钥或其他字段。
+qian 为 1–100 的整数，对应 `frontend/qian.js` 的百签签库（签名、签诗、签等、签意）。aspect 为问事方面：general（综合）、love（感情）、work（事业）、study（学业）、wealth（财富）、people（人际）、family（家庭）、wellbeing（身心）、travel（出行）、decision（抉择）、lost（迷茫）、growth（成长）。旧页面发送的 `{"topic":"love"}` 仍被接受，服务器会随机抽一支签。服务端不接收用户传入的模型地址、提示词、密钥或其他字段。
+
+签名、签诗、签等、印由签库决定，模型只写 title、body、action、time；未配置模型或模型失败时，用签意加该方面的内置视角组成解签。
 
 成功 200：
 
@@ -22,8 +24,10 @@
   "generatedAt": "2026-11-15T10:00:00.000Z",
   "reading": {
     "id": "ai-unique-id",
-    "topic": "love",
-    "number": "今日",
+    "topic": "work",
+    "qian": 37,
+    "level": "上签",
+    "number": "三十七",
     "name": "花开有时",
     "title": "你值得被爱，\n也值得慢慢来。",
     "poem": ["不催花开早", "自有清风来"],

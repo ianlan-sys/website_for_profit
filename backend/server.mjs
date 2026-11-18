@@ -3,7 +3,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isIP } from 'node:net';
+import { randomInt } from 'node:crypto';
 import { curatedReading,generateReading } from './model.mjs';
+import { qians } from '../frontend/qian.js';
 import { topics } from '../frontend/readings.js';
 const ROOT=fileURLToPath(new URL('../frontend/',import.meta.url));
 const MIME={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.jpg':'image/jpeg','.json':'application/json; charset=utf-8'};
@@ -18,6 +20,15 @@ export function configFromEnv(env=process.env) {
   if(u.protocol==='http:'&&!['localhost','127.0.0.1','[::1]'].includes(u.hostname))throw Error('Remote model endpoints require HTTPS');
   if(config.publicOrigin){const origin=new URL(config.publicOrigin);if(origin.origin!==config.publicOrigin||!['http:','https:'].includes(origin.protocol))throw Error('PUBLIC_ORIGIN must be an origin without trailing slash');}
   return config;
+}
+// Accepts {qian:1-100, aspect}. Older pages sent {topic}; they still get a random qian for that aspect.
+export function parseFortuneRequest(input) {
+  if(!input||typeof input!=='object'||Array.isArray(input))return null;
+  const keys=Object.keys(input);
+  if(keys.length===1&&keys[0]==='topic')return Object.hasOwn(topics,input.topic)?{qian:randomInt(1,qians.length+1),aspect:input.topic}:null;
+  if(keys.length!==2||!keys.includes('qian')||!keys.includes('aspect'))return null;
+  if(!Number.isInteger(input.qian)||input.qian<1||input.qian>qians.length||!Object.hasOwn(topics,input.aspect))return null;
+  return {qian:input.qian,aspect:input.aspect};
 }
 export function createApp(config=configFromEnv(),{fetchImpl=fetch,now=Date.now}={}) {
   const buckets=new Map();let active=0,budgetHour=0,budgetUsed=0;
@@ -40,14 +51,15 @@ export function createApp(config=configFromEnv(),{fetchImpl=fetch,now=Date.now}=
         const chunks=[];let size=0;
         for await(const chunk of req){size+=chunk.length;if(size>2048){req.resume();return json(res,413,{error:{code:'BODY_TOO_LARGE',message:'请求内容过长。'}});}chunks.push(chunk);}
         let input;try{input=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{return json(res,400,{error:{code:'INVALID_JSON',message:'请求格式不正确。'}});}
-        if(!input||typeof input!=='object'||Array.isArray(input)||!Object.hasOwn(topics,input.topic)||Object.keys(input).some(k=>k!=='topic'))return json(res,400,{error:{code:'INVALID_TOPIC',message:'请选择爱情、事业、迷茫或成长。'}});
-        const topic=input.topic,generatedAt=new Date(now()).toISOString();
-        if(!config.apiKey)return json(res,200,{source:'curated',generatedAt,reading:curatedReading(topic)});
+        const request=parseFortuneRequest(input);
+        if(!request)return json(res,400,{error:{code:'INVALID_TOPIC',message:'请先摇出一支签，再选择想问的方面。'}});
+        const {qian,aspect}=request,generatedAt=new Date(now()).toISOString();
+        if(!config.apiKey)return json(res,200,{source:'curated',generatedAt,reading:curatedReading(qian,aspect)});
         const hour=Math.floor(now()/3600000);if(hour!==budgetHour){budgetHour=hour;budgetUsed=0;}
         if(active>=config.maxConcurrent||budgetUsed>=config.hourlyBudget)return json(res,429,{error:{code:'MODEL_BUSY',message:'此刻来求签的人有些多，请稍后再试。'}},{'Retry-After':'60'});
         active++;budgetUsed++;
-        try {const reading=await generateReading(topic,config,{fetchImpl});return json(res,200,{source:'ai',generatedAt,reading});}
-        catch(error){if(config.fallback)return json(res,200,{source:'fallback',generatedAt,notice:'这次 AI 解读暂时没有送达，先送你一段温柔的主题签文。',reading:curatedReading(topic)});return json(res,502,{error:{code:error.code||'MODEL_UNAVAILABLE',message:'签文暂时没有送达，请稍后再试。'}});}
+        try {const reading=await generateReading(qian,aspect,config,{fetchImpl});return json(res,200,{source:'ai',generatedAt,reading});}
+        catch(error){if(config.fallback)return json(res,200,{source:'fallback',generatedAt,notice:'这次 AI 解签暂时没有送达，先送你一段一签的内置解签。',reading:curatedReading(qian,aspect)});return json(res,502,{error:{code:error.code||'MODEL_UNAVAILABLE',message:'签文暂时没有送达，请稍后再试。'}});}
         finally {active--;}
       }
       if(url.pathname.startsWith('/api/'))return json(res,404,{error:{code:'NOT_FOUND',message:'接口不存在。'}});

@@ -1,9 +1,19 @@
+// 问事方面（键名与 qian.js 的 aspectOrder 一致）。旧的四个主题键保留，旧收藏仍可显示。
 export const topics = {
+  "general": "整体近况",
   "love": "爱情与关系",
   "work": "事业与方向",
+  "study": "学业与考试",
+  "wealth": "财富与规划",
+  "people": "人际与相处",
+  "family": "家庭与亲人",
+  "wellbeing": "身心与休息",
+  "travel": "出行与变动",
+  "decision": "抉择与取舍",
   "lost": "此刻的迷茫",
   "growth": "自我成长"
 };
+// 下方 16 条为旧版主题签，仅用于迁移旧收藏。
 export const readings = [
   {
     "id": "love-1",
