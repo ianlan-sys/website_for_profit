@@ -60,6 +60,7 @@ async function callModel(system,user,config,{fetchImpl=fetch,timeoutMs=config.ti
     const body={model:config.model,messages:[{role:'system',content:system},{role:'user',content:user}],stream:false};
     if(config.jsonMode)body.response_format={type:'json_object'};
     if(config.disableThinking)body.thinking={type:'disabled'};
+    if(config.reasoningEffort)body.reasoning_effort=config.reasoningEffort;
     body[config.tokenParameter]=maxTokens;
     const response=await fetchImpl(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+config.apiKey},body:JSON.stringify(body),signal:controller.signal,redirect:'error'});
     if(!response.ok){let text='';try{text=(await response.text()).slice(0,240);}catch{}throw new ModelError('UPSTREAM_UNAVAILABLE','HTTP '+response.status+' '+text);}
